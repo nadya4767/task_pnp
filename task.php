@@ -1,31 +1,22 @@
 <?php
 
 $example_persons_array = [
-    "Иванов Иван Иванович",
-    "Сидоров Алексей Петрович",
-    "Тихонов Михаил Андреевич",
-    "Шевченко Юрий Николаевич",
-    "Васильев Артем Владимирович",
-    "Новиков Дмитрий Евгеньевич",
-    "Орлов Николай Сергеевич",
-    "Смирнов Владимир Аркадьевич",
-    "Кузьмин Андрей Ильич",
-    "Федоров Максим Валерьевич",
-    "Зайцев Роман Никитич",
-    "Петрова Мария Сергеевна",
-    "Кузнецова Анна Владимировна",
-    "Алексеева Ольга Петровна",
-    "Ким Татьяна Ивановна",
-    "Морозова Екатерина Алексеевна",
-    "Соколова Елена Викторовна",
-    "Лебедева Светлана Павловна",
-    "Кравчук Александр Викторович",
-    "Климко Евгения Петровна"
+    ['fullname' => 'Иванов Иван Иванович', 'job' => 'tester'],
+    ['fullname' => 'Степанова Наталья Степановна', 'job' => 'frontend-developer'],
+    ['fullname' => 'Пащенко Владимир Александрович', 'job' => 'analyst'],
+    ['fullname' => 'Громов Александр Иванович', 'job' => 'fullstack-developer'],
+    ['fullname' => 'Славин Семён Сергеевич', 'job' => 'analyst'],
+    ['fullname' => 'Цой Владимир Антонович', 'job' => 'frontend-developer'],
+    ['fullname' => 'Быстрая Юлия Сергеевна', 'job' => 'PR-manager'],
+    ['fullname' => 'Шматко Антонина Сергеевна', 'job' => 'HR-manager'],
+    ['fullname' => 'аль-Хорезми Мухаммад ибн-Муса', 'job' => 'analyst'],
+    ['fullname' => 'Бардо Жаклин Фёдоровна', 'job' => 'android-developer'],
+    ['fullname' => 'Шварцнегер Арнольд Густавович', 'job' => 'babysitter'],
 ];
 
 // Функция: склеивание ФИО из частей
-function getFullnameFromParts($surname, $name, $patronomyc) {
-    return trim("$surname $name $patronomyc");
+function getFullnameFromParts($surname, $name, $patronymic) {
+    return trim("$surname $name $patronymic");
 }
 
 // Функция: разбиение ФИО на части
@@ -34,7 +25,7 @@ function getPartsFromFullname($fullname) {
     return [
         'surname' => $parts[0] ?? '',
         'name' => $parts[1] ?? '',
-        'patronomyc' => $parts[2] ?? ''
+        'patronymic' => $parts[2] ?? ''
     ];
 }
 
@@ -52,9 +43,9 @@ function getGenderFromName($fullname) {
     $genderScore = 0;
 
     // Отчество
-    if (mb_substr($parts['patronomyc'], -3) === 'вна') {
+    if (mb_substr($parts['patronymic'], -3) === 'вна') {
         $genderScore--;
-    } elseif (mb_substr($parts['patronomyc'], -2) === 'ич') {
+    } elseif (mb_substr($parts['patronymic'], -2) === 'ич') {
         $genderScore++;
     }
 
@@ -79,10 +70,10 @@ function getGenderFromName($fullname) {
 function getGenderDescription($persons) {
     $total = count($persons);
     $male = count(array_filter($persons, function($person) {
-        return getGenderFromName($person) === 1;
+        return getGenderFromName($person['fullname']) === 1;
     }));
     $female = count(array_filter($persons, function($person) {
-        return getGenderFromName($person) === -1;
+        return getGenderFromName($person['fullname']) === -1;
     }));
     $undefined = $total - $male - $female;
 
@@ -97,13 +88,13 @@ function getGenderDescription($persons) {
 }
 
 // 🔸 Новая функция: идеальный подбор пары
-function getPerfectPartner($surname, $name, $patronomyc, $persons) {
+function getPerfectPartner($surname, $name, $patronymic, $persons) {
     // Приведение ФИО к нормальному регистру
     $surname = mb_convert_case(mb_strtolower($surname), MB_CASE_TITLE, "UTF-8");
     $name = mb_convert_case(mb_strtolower($name), MB_CASE_TITLE, "UTF-8");
-    $patronomyc = mb_convert_case(mb_strtolower($patronomyc), MB_CASE_TITLE, "UTF-8");
+    $patronymic = mb_convert_case(mb_strtolower($patronymic), MB_CASE_TITLE, "UTF-8");
 
-    $userFullname = getFullnameFromParts($surname, $name, $patronomyc);
+    $userFullname = getFullnameFromParts($surname, $name, $patronymic);
     $userGender = getGenderFromName($userFullname);
 
     if ($userGender === 0) {
@@ -111,14 +102,19 @@ function getPerfectPartner($surname, $name, $patronomyc, $persons) {
     }
 
     // Поиск пары противоположного пола
-    do {
-        $randomPerson = $persons[rand(0, count($persons) - 1)];
-        $randomGender = getGenderFromName($randomPerson);
-    } while ($randomGender === 0 || $randomGender === $userGender);
+    $oppositeGenderPersons = array_filter($persons, function ($person) use ($userGender) {
+        return getGenderFromName($person['fullname']) === -$userGender;
+    });
+
+    if (empty($oppositeGenderPersons)) {
+        return "Не найдено подходящих партнёров противоположного пола.";
+    }
+
+    $randomPerson = $oppositeGenderPersons[array_rand($oppositeGenderPersons)];
 
     // Сокращённые имена
     $shortUser = getShortName($userFullname);
-    $shortMatch = getShortName($randomPerson);
+    $shortMatch = getShortName($randomPerson['fullname']);
 
     // Случайный процент совместимости
     $compatibility = round(mt_rand(5000, 10000) / 100, 2);
@@ -126,11 +122,11 @@ function getPerfectPartner($surname, $name, $patronomyc, $persons) {
     return "$shortUser + $shortMatch =\n♡ Идеально на $compatibility% ♡";
 }
 // --- Вывод ---
-echo "<h3>Определение пола:</h3>";
+echo "<h3>Определение пола:</h3><br>";
 foreach ($example_persons_array as $person) {
-    $gender = getGenderFromName($person);
+    $gender = getGenderFromName($person['fullname']);
     $genderStr = $gender === 1 ? 'мужской' : ($gender === -1 ? 'женский' : 'неопределённый');
-    echo "<strong>ФИО:</strong> $person — Пол: $genderStr<br>";
+    echo "<strong>ФИО:</strong> {$person['fullname']} — Пол: $genderStr<br>";
 }
 
 echo "<h3>Гендерный состав аудитории:</h3><pre>";
